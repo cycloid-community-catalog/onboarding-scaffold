@@ -41,4 +41,26 @@ app.get('/api/hello', (req, res) => {
 	})
 })
 
+
+
+db = require('redis').createClient({
+    host: '127.0.0.1',
+    port: 6379
+});
+
+app.get('/api/counter', (req, res) => {
+    db.incr('visits', (err, reply) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send(err.message);
+            return;
+        }
+	res.send({
+		message: `👋 hello world 🌍`,
+		pod: fancy_name,
+		visits: reply
+	})
+    });
+});
+
 app.listen(port, () => console.log(`🌍 webapp is listening on port ${port}!`))
