@@ -1,5 +1,5 @@
 datasource db {
-  provider = "${DATABASE_ENGINE}"
+  provider = env("DATABASE_ENGINE")
   url      = env("DATABASE_URL")
 }
 
