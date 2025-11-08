@@ -1,0 +1,20 @@
+name: Docker Image CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}
+    - name: Push image to the DockerHub registry
+      run: |
+        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+        docker push olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}
