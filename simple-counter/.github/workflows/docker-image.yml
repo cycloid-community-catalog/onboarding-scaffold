@@ -16,5 +16,16 @@ jobs:
       run: docker build . --file Dockerfile --tag olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}
     - name: Push image to the DockerHub registry
       run: |
-        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+    - name: This is a PR
+      if: ${{ github.event.pull_request.number != '' && github.event.pull_request.number != null }}
+      run: |
         docker push olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}
+        echo "Pull request number ${{ github.event.pull_request.number }} has been pushed as tag ${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}!"
+
+    - name: This is NOT a PR
+      if: ${{ github.event.pull_request.number == '' || github.event.pull_request.number == null }}
+      run: |
+        echo "DATE=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
+        docker push olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-${{ DATE }}
+        echo "Pull request number ${{ github.event.pull_request.number }} has been pushed as tag ${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-${{ DATE }}!"
