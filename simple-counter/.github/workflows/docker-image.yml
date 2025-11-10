@@ -1,31 +1,39 @@
 name: Docker Image CI
 
 on:
-  push:
+  # When a PR is updated (new commits, reopened, or created)
   pull_request:
+    types: [opened, reopened, synchronize]
+
+  # When a PR is merged (merged commit appears in main or another target branch)
+  push:
+    branches:
+      - main
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}
-    - name: Push image to the DockerHub registry
-      run: |
-        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-    - name: This is a PR
-      if: ${{ github.event.pull_request.number != '' && github.event.pull_request.number != null }}
-      run: |
-        docker push olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}
-        echo "Pull request number ${{ github.event.pull_request.number }} has been pushed as tag ${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}!"
+      - uses: actions/checkout@v4
 
-    - name: This is NOT a PR
-      if: ${{ github.event.pull_request.number == '' || github.event.pull_request.number == null }}
-      run: |
-        echo "DATE=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
-        docker push olivier2t/app-test-env:${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-${{ DATE }}
-        echo "Pull request number ${{ github.event.pull_request.number }} has been pushed as tag ${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-${{ DATE }}!"
+      # For Pull Requests
+      - name: Build and Push PR image
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}"
+          docker build . --file Dockerfile --tag olivier2t/app-test-env:$TAG
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker push olivier2t/app-test-env:$TAG
+          echo "✅ Built and pushed PR image: olivier2t/app-test-env:$TAG"
+
+      # For non-PR pushes (branches, merges)
+      - name: Build and Push non-PR image
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          DATE=$(date +'%Y%m%d%H%M')
+          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-$DATE"
+          docker build . --file Dockerfile --tag olivier2t/app-test-env:$TAG
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker push olivier2t/app-test-env:$TAG
+          echo "✅ Built and pushed image: olivier2t/app-test-env:$TAG"
