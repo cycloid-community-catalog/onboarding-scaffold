@@ -10,6 +10,10 @@ on:
     branches:
       - main
 
+  # Triggers only when a new release is created
+  release:
+    types: [created]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,18 +25,31 @@ jobs:
       - name: Build and Push PR image
         if: ${{ github.event_name == 'pull_request' }}
         run: |
-          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-pr${{ github.event.pull_request.number }}"
+          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-pr${{ github.event.pull_request.number }}"
+          sed -i "s/__VERSION__/$TAG/" public/index.html
           docker build . --file Dockerfile --tag olivier2t/app-test-env:$TAG
           echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           docker push olivier2t/app-test-env:$TAG
           echo "✅ Built and pushed PR image: olivier2t/app-test-env:$TAG"
 
       # For non-PR pushes (branches, merges)
-      - name: Build and Push non-PR image
-        if: ${{ github.event_name != 'pull_request' }}
+      - name: Build and Push Release image
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-${{ github.event.release.tag_name }}"
+          sed -i "s/__VERSION__/v${{ github.event.release.tag_name }}/" public/index.html
+          docker build . --file Dockerfile --tag olivier2t/app-test-env:$TAG
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker push olivier2t/app-test-env:$TAG
+          echo "✅ Built and pushed image: olivier2t/app-test-env:$TAG"
+
+      # For non-PR pushes (branches, merges)
+      - name: Build and Push Merged image
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'release' }}
         run: |
           DATE=$(date +'%Y%m%d%H%M')
-          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-${{ vars.ENV }}-$DATE"
+          TAG="${{ vars.ORG }}-${{ vars.PROJECT }}-$DATE"
+          sed -i "s/__VERSION__/$TAG/" public/index.html
           docker build . --file Dockerfile --tag olivier2t/app-test-env:$TAG
           echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           docker push olivier2t/app-test-env:$TAG
